@@ -1,0 +1,12 @@
+Flask>=2.0.1
+Flask-SQLAlchemy>=2.5.1
+Flask-SocketIO>=5.1.1
+twilio>=7.8.0
+requests>=2.26.0
+python-dotenv>=0.19.1
+geopy>=2.2.0
+gunicorn>=21.2.0
+eventlet>=0.35.2
+dnspython>=2.0.0
+Werkzeug>=2.0.3
+setuptools

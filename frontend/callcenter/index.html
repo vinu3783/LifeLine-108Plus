@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency Response System - Call Center Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #f5f5f5;
+        }
+        .sidebar {
+            width: 300px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+        }
+        .call-entry {
+            background-color: #34495e;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .call-entry.active {
+            background-color: #e74c3c;
+        }
+        .call-id {
+            font-weight: bold;
+        }
+        .call-time {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        .map-container {
+            flex: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        .map-legend {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000;
+            font-size: 12px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            margin-right: 8px;
+            border-radius: 50%;
+        }
+        .call-details {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .detail-row {
+            margin-bottom: 10px;
+            display: flex;
+        }
+        .detail-label {
+            font-weight: bold;
+            width: 150px;
+        }
+        .action-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+        .btn-success {
+            background-color: #2ecc71;
+            color: white;
+        }
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .btn-secondary {
+            background-color: #95a5a6;
+            color: white;
+        }
+        .btn:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .new-call-form {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-initiated {
+            background-color: #3498db;
+            color: white;
+        }
+        .status-location-shared {
+            background-color: #f39c12;
+            color: white;
+        }
+        .status-assigned {
+            background-color: #2ecc71;
+            color: white;
+        }
+        .status-arrived {
+            background-color: #9b59b6;
+            color: white;
+        }
+        .status-completed {
+            background-color: #95a5a6;
+            color: white;
+        }
+        .ambulance-marker {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 0;
+        }
+        .ambulance-status {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .available {
+            background-color: #2ecc71;
+        }
+        .unavailable {
+            background-color: #e74c3c;
+        }
+        .location-link-container {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+        }
+        .location-link {
+            word-break: break-all;
+            font-family: monospace;
+            margin-bottom: 5px;
+        }
+        .copy-button {
+            padding: 2px 8px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        .status-timeline {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .timeline-item {
+            display: flex;
+            margin-bottom: 10px;
+            align-items: flex-start;
+        }
+        .timeline-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 10px;
+            margin-top: 2px;
+        }
+        .timeline-dot.completed {
+            background-color: #2ecc71;
+        }
+        .timeline-dot.pending {
+            background-color: #95a5a6;
+        }
+        .timeline-dot.current {
+            background-color: #3498db;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .timeline-content {
+            flex: 1;
+        }
+        .timeline-time {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        .tracking-info {
+            background-color: #eaf7fd;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+            margin-top: 20px;
+        }
+        .emergency-path {
+            stroke: blue;
+            stroke-width: 3;
+            stroke-dasharray: 5, 8;
+            opacity: 0.7;
+        }
+        
+        /* SMS Protocol Styles */
+        .connectivity-badge {
+            display: inline-block;
+            padding: 5px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .connectivity-online {
+            background-color: #2ecc71;
+            color: white;
+        }
+        .connectivity-offline {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .connectivity-low {
+            background-color: #f39c12;
+            color: white;
+        }
+        .connectivity-unknown {
+            background-color: #95a5a6;
+            color: white;
+        }
+        .location-method-badge {
+            display: inline-block;
+            padding: 5px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .method-web {
+            background-color: #3498db;
+            color: white;
+        }
+        .method-sms {
+            background-color: #e67e22;
+            color: white;
+        }
+        .method-manual {
+            background-color: #9b59b6;
+            color: white;
+        }
+        .sms-protocol-section {
+            background-color: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #f39c12;
+            margin-top: 20px;
+        }
+        .sms-code {
+            font-family: monospace;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 5px 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            margin: 5px 0;
+        }
+        .expiry-active {
+            color: #2c3e50;
+        }
+        .expiry-expired {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="header">
+            <div class="logo">ERS Dashboard</div>
+            <a href="/api/ambulance/app" target="_blank" class="btn btn-primary" style="text-decoration: none; font-size: 14px;">Driver Portal</a>
+        </div>
+        
+        <h3>Active Calls</h3>
+        <div id="activeCalls">
+            <!-- Active calls will be loaded here -->
+            <div class="call-entry">
+                <div class="call-id">Loading calls...</div>
+            </div>
+        </div>
+        
+        <h3>Ambulances</h3>
+        <div id="ambulances">
+            <!-- Ambulances will be loaded here -->
+            <div class="ambulance-marker">
+                <span class="ambulance-status"></span>
+                <span>Loading ambulances...</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="new-call-form">
+            <h2>New Emergency Call</h2>
+            <div class="form-group">
+                <label for="callerPhone">Caller Phone Number</label>
+                <input type="text" id="callerPhone" placeholder="+919876543210">
+            </div>
+            <div class="form-group">
+                <label for="connectivityStatus">Caller's Connectivity</label>
+                <select id="connectivityStatus">
+                    <option value="unknown">Unknown</option>
+                    <option value="online">Online</option>
+                    <option value="low_bandwidth">Low Bandwidth</option>
+                    <option value="offline">Offline (SMS Only)</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" id="initiateCallBtn">Initiate Emergency Response</button>
+        </div>
+        
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <div class="map-legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: red;"></div>
+                    <div>Emergency Location</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: green;"></div>
+                    <div>Available Ambulance</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: orange;"></div>
+                    <div>Assigned Ambulance</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: purple;"></div>
+                    <div>Arrived at Location</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="call-details" id="callDetails" style="display: none;">
+            <h2>Emergency Call Details</h2>
+            
+            <div class="detail-row">
+                <div class="detail-label">Call ID:</div>
+                <div id="detailCallId"></div>
+            </div>
+            
+            <div class="detail-row">
+                <div class="detail-label">Caller Phone:</div>
+                <div id="detailCallerPhone"></div>
+            </div>
+            
+            <div class="detail-row">
+                <div class="detail-label">Call Time:</div>
+                <div id="detailCallTime"></div>
+            </div>
+            
+            <div class="detail-row">
+                <div class="detail-label">Status:</div>
+                <div id="detailStatus"></div>
+            </div>
+            
+            <!-- New connectivity status row -->
+            <div class="detail-row">
+                <div class="detail-label">Connectivity:</div>
+                <div id="detailConnectivity"></div>
+            </div>
+            
+            <!-- New location method row -->
+            <div class="detail-row">
+                <div class="detail-label">Location Method:</div>
+                <div id="detailLocationMethod"></div>
+            </div>
+            
+            <div class="detail-row">
+                <div class="detail-label">Location:</div>
+                <div id="detailLocation"></div>
+            </div>
+            
+            <div class="detail-row">
+                <div class="detail-label">Address:</div>
+                <div id="detailAddress"></div>
+            </div>
+            
+            <div class="detail-row">
+                <div class="detail-label">Assigned Ambulance:</div>
+                <div id="detailAmbulance"></div>
+            </div>
+            
+            <!-- Added Location Share Link section -->
+            <div class="detail-row">
+                <div class="detail-label">Location Share Link:</div>
+                <div id="detailLocationLink" class="location-link-container">Not available</div>
+            </div>
+            
+            <!-- SMS Protocol Section -->
+            <div class="sms-protocol-section" id="smsProtocolSection" style="display: none;">
+                <h3>SMS Location Protocol</h3>
+                <div class="detail-row">
+                    <div class="detail-label">SMS Location Code:</div>
+                    <div id="detailSmsCode" class="sms-code">Not initiated</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Code Expiry:</div>
+                    <div id="detailCodeExpiry">N/A</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Protocol Status:</div>
+                    <div id="detailProtocolStatus">Not initiated</div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <button class="btn btn-primary" id="initiateSmsProtocolBtn">Initiate SMS Protocol</button>
+                    <button class="btn btn-secondary" id="resendSmsCodeBtn" disabled>Resend SMS Code</button>
+                </div>
+                <div style="margin-top: 10px; font-size: 12px; color: #7f8c8d;">
+                    The SMS protocol sends a code to the caller for offline location sharing. The caller responds with "LOCATION" to share their GPS coordinates.
+                </div>
+            </div>
+            
+            <!-- Status Timeline -->
+            <div class="status-timeline" id="statusTimeline">
+                <h3>Emergency Timeline</h3>
+                <div id="timelineContent">
+                    <!-- Timeline items will be inserted here -->
+                </div>
+            </div>
+            
+            <!-- Tracking Information (for assigned ambulances) -->
+            <div class="tracking-info" id="trackingInfo" style="display: none;">
+                <h3>Ambulance Tracking</h3>
+                <div id="trackingContent">
+                    <!-- Tracking info will be added here -->
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="btn btn-primary" id="shareLocationLinkBtn" disabled>Copy Location Link</button>
+                <button class="btn btn-success" id="assignAmbulanceBtn" disabled>Assign Nearest Ambulance</button>
+                <button class="btn btn-danger" id="completeCallBtn" disabled>Complete Call</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
+    <script>
+        // Global variables
+        let map = null;
+        let markers = {};
+        let ambulanceMarkers = {};
+        let ambulancePaths = {};
+        let currentCallId = null;
+        let activeCall = null;
+        let refreshInterval = null;
+        
+        // DOM elements
+        const activeCalls = document.getElementById('activeCalls');
+        const ambulances = document.getElementById('ambulances');
+        const callDetails = document.getElementById('callDetails');
+        const callerPhone = document.getElementById('callerPhone');
+        const connectivityStatus = document.getElementById('connectivityStatus');
+        const initiateCallBtn = document.getElementById('initiateCallBtn');
+        const shareLocationLinkBtn = document.getElementById('shareLocationLinkBtn');
+        const assignAmbulanceBtn = document.getElementById('assignAmbulanceBtn');
+        const completeCallBtn = document.getElementById('completeCallBtn');
+        const smsProtocolSection = document.getElementById('smsProtocolSection');
+        const initiateSmsProtocolBtn = document.getElementById('initiateSmsProtocolBtn');
+        const resendSmsCodeBtn = document.getElementById('resendSmsCodeBtn');
+        const statusTimeline = document.getElementById('statusTimeline');
+        const timelineContent = document.getElementById('timelineContent');
+        const trackingInfo = document.getElementById('trackingInfo');
+        const trackingContent = document.getElementById('trackingContent');
+        
+        // Initialize map
+        function initMap() {
+            // Center map on Davanagere, Karnataka, India
+            map = L.map('map').setView([14.4644, 75.9218], 13);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+        }
+        
+        // Load active calls
+        function loadActiveCalls() {
+            fetch('/api/callcenter/active-calls')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayActiveCalls(data.calls);
+                    }
+                })
+                .catch(error => console.error('Error loading active calls:', error));
+        }
+        
+        // Display active calls in sidebar
+        function displayActiveCalls(calls) {
+            activeCalls.innerHTML = '';
+            
+            if (calls.length === 0) {
+                activeCalls.innerHTML = '<div class="call-entry"><div class="call-id">No active calls</div></div>';
+                return;
+            }
+            
+            calls.forEach(call => {
+                const callEntry = document.createElement('div');
+                callEntry.className = 'call-entry';
+                if (currentCallId === call.id) {
+                    callEntry.classList.add('active');
+                }
+                
+                // Add SMS icon if using SMS protocol
+                let smsIndicator = '';
+                if (call.location_method === 'sms') {
+                    smsIndicator = '📱 ';
+                }
+                
+                callEntry.innerHTML = `
+                    <div class="call-id">${smsIndicator}Call #${call.id}</div>
+                    <div>${call.caller_phone}</div>
+                    <div class="call-time">${formatDateTime(call.call_time)}</div>
+                    <div>
+                        <span class="status-badge status-${call.status}">${formatStatus(call.status)}</span>
+                    </div>
+                `;
+                
+                callEntry.addEventListener('click', () => loadCallDetails(call.id));
+                activeCalls.appendChild(callEntry);
+                
+                // Add marker for each call with location
+                if (call.latitude && call.longitude) {
+                    addOrUpdateMarker(call);
+                }
+            });
+        }
+        
+        // Load ambulances
+        function loadAmbulances() {
+            fetch('/api/ambulance/all')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayAmbulances(data.ambulances);
+                    }
+                })
+                .catch(error => console.error('Error loading ambulances:', error));
+        }
+        
+        // Display ambulances in sidebar
+        function displayAmbulances(ambulanceList) {
+            ambulances.innerHTML = '';
+            
+            if (ambulanceList.length === 0) {
+                ambulances.innerHTML = '<div class="ambulance-marker"><span>No ambulances registered</span></div>';
+                return;
+            }
+            
+            ambulanceList.forEach(ambulance => {
+                const ambulanceEntry = document.createElement('div');
+                ambulanceEntry.className = 'ambulance-marker';
+                
+                ambulanceEntry.innerHTML = `
+                    <span class="ambulance-status ${ambulance.is_available ? 'available' : 'unavailable'}"></span>
+                    <span>${ambulance.ambulance_id} - ${ambulance.driver_name}</span>
+                `;
+                
+                ambulances.appendChild(ambulanceEntry);
+                
+                // Add ambulance marker to map
+                addOrUpdateAmbulanceMarker(ambulance);
+            });
+        }
+        
+        // Load call details
+        function loadCallDetails(callId) {
+            currentCallId = callId;
+            
+            // Update UI to show the selected call
+            const callEntries = document.querySelectorAll('.call-entry');
+            callEntries.forEach(entry => entry.classList.remove('active'));
+            
+            fetch(`/api/callcenter/call/${callId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayCallDetails(data.call);
+                        activeCall = data.call;
+                        
+                        // Highlight the selected call in the sidebar
+                        const selectedCallEntry = Array.from(callEntries).find(
+                            entry => entry.querySelector('.call-id').textContent.includes(`Call #${callId}`)
+                        );
+                        if (selectedCallEntry) {
+                            selectedCallEntry.classList.add('active');
+                        }
+                        
+                        // Start tracking this call
+                        startTrackingCall(callId);
+                    }
+                })
+                .catch(error => console.error('Error loading call details:', error));
+        }
+        
+        // Start tracking selected call
+        function startTrackingCall(callId) {
+            // Clear any previous tracking
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            
+            // Set up tracking for the selected call
+            refreshInterval = setInterval(() => {
+                if (currentCallId) {
+                    fetch(`/api/callcenter/call/${currentCallId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Update call data
+                                activeCall = data.call;
+                                
+                                // Update status if needed
+                                const currentStatus = document.getElementById('detailStatus').querySelector('.status-badge').textContent;
+                                const newStatus = formatStatus(data.call.status);
+                                
+                                if (currentStatus !== newStatus) {
+                                    displayCallDetails(data.call);
+                                }
+                                
+                                // Always update tracking information
+                                updateTrackingInfo(data.call);
+                                
+                                // Update SMS protocol info if available
+                                updateSmsProtocolInfo(data.call);
+                            }
+                        })
+                        .catch(error => console.error('Error refreshing call details:', error));
+                }
+            }, 5000); // Refresh every 5 seconds
+        }
+        
+        // Display call details
+        function displayCallDetails(call) {
+            callDetails.style.display = 'block';
+            
+            document.getElementById('detailCallId').textContent = call.id;
+            document.getElementById('detailCallerPhone').textContent = call.caller_phone;
+            document.getElementById('detailCallTime').textContent = formatDateTime(call.call_time);
+            
+            // Determine status - check if arrived but not completed
+            let status = call.status;
+            if (status === 'assigned' && call.pickup_time && !call.completion_time) {
+                status = 'arrived';
+            }
+            
+            const statusElement = document.getElementById('detailStatus');
+            statusElement.innerHTML = `<span class="status-badge status-${status}">${formatStatus(status)}</span>`;
+            
+            // Display connectivity status
+            const connectivityElement = document.getElementById('detailConnectivity');
+            let connectivityClass = 'connectivity-unknown';
+            let connectivityText = 'Unknown';
+            
+            if (call.connectivity_status) {
+                switch(call.connectivity_status) {
+                    case 'online':
+                        connectivityClass = 'connectivity-online';
+                        connectivityText = 'Online';
+                        break;
+                    case 'offline':
+                        connectivityClass = 'connectivity-offline';
+                        connectivityText = 'Offline (SMS Only)';
+                        break;
+                    case 'low_bandwidth':
+                        connectivityClass = 'connectivity-low';
+                        connectivityText = 'Low Bandwidth';
+                        break;
+                    default:
+                        connectivityClass = 'connectivity-unknown';
+                        connectivityText = 'Unknown';
+                }
+            }
+            
+            connectivityElement.innerHTML = `<span class="connectivity-badge ${connectivityClass}">${connectivityText}</span>`;
+            
+            // Display location method
+            const locationMethodElement = document.getElementById('detailLocationMethod');
+            let methodClass = '';
+            let methodText = 'Not determined';
+            
+            if (call.location_method) {
+                switch(call.location_method) {
+                    case 'web':
+                        methodClass = 'method-web';
+                        methodText = 'Web Link';
+                        break;
+                    case 'sms':
+                        methodClass = 'method-sms';
+                        methodText = 'SMS Protocol';
+                        break;
+                    case 'manual':
+                        methodClass = 'method-manual';
+                        methodText = 'Manually Entered';
+                        break;
+                    default:
+                        methodClass = '';
+                        methodText = call.location_method;
+                }
+            }
+            
+            locationMethodElement.innerHTML = `<span class="location-method-badge ${methodClass}">${methodText}</span>`;
+            
+            // Location details
+            if (call.latitude && call.longitude) {
+                document.getElementById('detailLocation').textContent = `${call.latitude}, ${call.longitude}`;
+                document.getElementById('detailAddress').textContent = call.address || 'Address not available';
+                
+                // Center map on this location
+                if (map) {
+                    map.setView([call.latitude, call.longitude], 15);
+                }
+            } else {
+                document.getElementById('detailLocation').textContent = 'Location not shared yet';
+                document.getElementById('detailAddress').textContent = 'Address not available';
+            }
+            
+            // Assigned ambulance details
+            if (call.assigned_ambulance_id) {
+                document.getElementById('detailAmbulance').textContent = `Ambulance assigned (ID: ${call.assigned_ambulance_id})`;
+                if (call.assigned_ambulance) {
+                    document.getElementById('detailAmbulance').textContent = 
+                        `Ambulance: ${call.assigned_ambulance.ambulance_id} - ${call.assigned_ambulance.driver_name}`;
+                }
+            } else {
+                document.getElementById('detailAmbulance').textContent = 'No ambulance assigned yet';
+            }
+            
+            // Location sharing link
+            if (call.location_link_id) {
+                const shareUrl = `${window.location.origin}/share-location/${call.location_link_id}`;
+                document.getElementById('detailLocationLink').innerHTML = 
+                    `<div class="location-link">
+                        <a href="${shareUrl}" target="_blank">${shareUrl}</a>
+                     </div>
+                     <button onclick="copyToClipboard('${shareUrl}')" class="btn btn-secondary copy-button">
+                        Copy Link
+                     </button>
+                     <button onclick="window.open('${shareUrl}', '_blank')" class="btn btn-primary copy-button">
+                        Open Link
+                     </button>`;
+            } else {
+                document.getElementById('detailLocationLink').innerHTML = 
+                    "<span>Not available</span>";
+            }
+            
+            // Update SMS protocol section
+            updateSmsProtocolInfo(call);
+            
+            // Update timeline
+            updateTimeline(call);
+            
+            // Update tracking information
+            updateTrackingInfo(call);
+            
+            // Enable/disable buttons based on call status
+            shareLocationLinkBtn.disabled = !call.location_link_id;
+            assignAmbulanceBtn.disabled = !call.latitude || !call.longitude || call.assigned_ambulance_id;
+            completeCallBtn.disabled = call.status === 'completed';
+        }
+        
+        // Update SMS protocol information
+        function updateSmsProtocolInfo(call) {
+            // Show SMS protocol section if the call is in appropriate status
+            if (call.status === 'initiated' || call.status === 'location_requested' || 
+                (call.status === 'location_shared' && call.location_method === 'sms')) {
+                
+                smsProtocolSection.style.display = 'block';
+                
+                // Update SMS code details
+                const smsCodeElement = document.getElementById('detailSmsCode');
+                const expiryElement = document.getElementById('detailCodeExpiry');
+                const protocolStatusElement = document.getElementById('detailProtocolStatus');
+                
+                if (call.sms_location_code) {
+                    // SMS protocol has been initiated
+                    smsCodeElement.textContent = call.sms_location_code;
+                    
+                    // Check if code is expired
+                    let isExpired = false;
+                    if (call.sms_code_expiry) {
+                        const expiryTime = new Date(call.sms_code_expiry);
+                        const now = new Date();
+                        
+                        isExpired = expiryTime < now;
+                        
+                        if (isExpired) {
+                            expiryElement.textContent = 'EXPIRED';
+                            expiryElement.className = 'expiry-expired';
+                        } else {
+                            expiryElement.textContent = formatDateTime(call.sms_code_expiry);
+                            expiryElement.className = 'expiry-active';
+                        }
+                    } else {
+                        expiryElement.textContent = 'No expiry set';
+                    }
+                    
+                    // Update protocol status
+                    if (call.location_method === 'sms' && call.latitude && call.longitude) {
+                        protocolStatusElement.textContent = 'Location received via SMS';
+                        protocolStatusElement.className = 'status-badge status-location-shared';
+                    } else if (isExpired) {
+                        protocolStatusElement.textContent = 'Code expired';
+                        protocolStatusElement.className = 'status-badge status-completed';
+                    } else {
+                        protocolStatusElement.textContent = 'Waiting for SMS response';
+                        protocolStatusElement.className = 'status-badge status-initiated';
+                    }
+                    
+                    // Update button states
+                    initiateSmsProtocolBtn.disabled = !isExpired;
+                    resendSmsCodeBtn.disabled = false;
+                } else {
+                    // SMS protocol not initiated yet
+                    smsCodeElement.textContent = 'Not initiated';
+                    expiryElement.textContent = 'N/A';
+                    protocolStatusElement.textContent = 'Not initiated';
+                    protocolStatusElement.className = '';
+                    
+                    // Update button states
+                    initiateSmsProtocolBtn.disabled = false;
+                    resendSmsCodeBtn.disabled = true;
+                }
+            } else {
+                // Hide SMS section for completed calls or those with location already shared via web
+                smsProtocolSection.style.display = 'none';
+            }
+        }
+        
+        // Update timeline based on call status
+        function updateTimeline(call) {
+            // Create timeline items
+            const timeline = [];
+            
+            // Call initiated
+            timeline.push({
+                status: 'completed',
+                label: 'Call Initiated',
+                time: call.call_time,
+                description: 'Emergency call received from caller'
+            });
+            
+            // Location shared
+            if (call.location_shared_time) {
+                let methodText = '';
+                if (call.location_method === 'sms') {
+                    methodText = ' via SMS';
+                } else if (call.location_method === 'web') {
+                    methodText = ' via web link';
+                }
+                
+                timeline.push({
+                    status: 'completed',
+                    label: 'Location Shared',
+                    time: call.location_shared_time,
+                    description: `Victim shared their exact location${methodText}`
+                });
+            } else if (call.sms_location_code) {
+                timeline.push({
+                    status: 'current',
+                    label: 'SMS Location Protocol',
+                    time: null,
+                    description: 'Waiting for SMS response with location'
+                });
+            } else if (call.location_link_id) {
+                timeline.push({
+                    status: 'current',
+                    label: 'Waiting for Location',
+                    time: null,
+                    description: 'Waiting for victim to share location via web link'
+                });
+            } else {
+                timeline.push({
+                    status: 'pending',
+                    label: 'Location Sharing',
+                    time: null,
+                    description: 'Location link not yet sent'
+                });
+            }
+            
+            // Ambulance assigned
+            if (call.assigned_time) {
+                timeline.push({
+                    status: 'completed',
+                    label: 'Ambulance Assigned',
+                    time: call.assigned_time,
+                    description: 'Ambulance dispatched to location'
+                });
+            } else if (call.latitude && call.longitude) {
+                timeline.push({
+                    status: 'current',
+                    label: 'Assigning Ambulance',
+                    time: null,
+                    description: 'Ready to assign nearest ambulance'
+                });
+            } else {
+                timeline.push({
+                    status: 'pending',
+                    label: 'Ambulance Assignment',
+                    time: null,
+                    description: 'Waiting for location to assign ambulance'
+                });
+            }
+            
+            // Ambulance arrived
+            if (call.pickup_time) {
+                timeline.push({
+                    status: 'completed',
+                    label: 'Ambulance Arrived',
+                    time: call.pickup_time,
+                    description: 'Ambulance reached the victim location'
+                });
+            } else if (call.assigned_time) {
+                timeline.push({
+                    status: 'current',
+                    label: 'En Route',
+                    time: null,
+                    description: 'Ambulance is en route to the location'
+                });
+            } else {
+                timeline.push({
+                    status: 'pending',
+                    label: 'Arrival',
+                    time: null,
+                    description: 'Waiting for ambulance to be assigned'
+                });
+            }
+            
+            // Call completed
+            if (call.completion_time) {
+                timeline.push({
+                    status: 'completed',
+                    label: 'Emergency Completed',
+                    time: call.completion_time,
+                    description: 'Emergency response completed'
+                });
+            } else if (call.pickup_time) {
+                timeline.push({
+                    status: 'current',
+                    label: 'In Progress',
+                    time: null,
+                    description: 'Emergency response in progress'
+                });
+            } else {
+                timeline.push({
+                    status: 'pending',
+                    label: 'Completion',
+                    time: null,
+                    description: 'Waiting for ambulance to arrive'
+                });
+            }
+            
+            // Render timeline items
+            timelineContent.innerHTML = '';
+            
+            timeline.forEach(item => {
+                const timelineItem = document.createElement('div');
+                timelineItem.className = 'timeline-item';
+                
+                timelineItem.innerHTML = `
+                    <div class="timeline-dot ${item.status}"></div>
+                    <div class="timeline-content">
+                        <div><strong>${item.label}</strong></div>
+                        ${item.time ? `<div class="timeline-time">${formatDateTime(item.time)}</div>` : ''}
+                        <div>${item.description}</div>
+                    </div>
+                `;
+                
+                timelineContent.appendChild(timelineItem);
+            });
+        }
+        
+        // Update ambulance tracking information
+        function updateTrackingInfo(call) {
+            if (call.assigned_ambulance_id && call.status !== 'completed') {
+                trackingInfo.style.display = 'block';
+                
+                // Get assigned ambulance
+                let assignedAmbulance = null;
+                if (call.assigned_ambulance) {
+                    assignedAmbulance = call.assigned_ambulance;
+                }
+                
+                // If we don't have the ambulance data from the call,
+                // try to find it in our ambulanceMarkers
+                if (!assignedAmbulance && ambulanceMarkers[call.assigned_ambulance_id]) {
+                    assignedAmbulance = ambulanceMarkers[call.assigned_ambulance_id]._ambulanceData;
+                }
+                
+                if (assignedAmbulance) {
+                    // Calculate estimated time if we have both positions
+                    let etaText = "Calculating...";
+                    if (call.latitude && call.longitude && assignedAmbulance.latitude && assignedAmbulance.longitude) {
+                        // Simple straight-line distance calculation (in km)
+                        const distance = calculateDistance(
+                            assignedAmbulance.latitude, assignedAmbulance.longitude,
+                            call.latitude, call.longitude
+                        );
+                        
+                        // Assume average speed of 30 km/h in city traffic
+                        const etaMinutes = Math.round((distance / 30) * 60);
+                        
+                        etaText = etaMinutes < 1 ? "Less than 1 minute" : 
+                                 etaMinutes < 60 ? `About ${etaMinutes} minutes` :
+                                 `About ${Math.floor(etaMinutes / 60)} hour${Math.floor(etaMinutes / 60) > 1 ? 's' : ''} ${etaMinutes % 60} minutes`;
+                    }
+                    
+                    let arrivalText = "";
+                    if (call.pickup_time) {
+                        arrivalText = `<div><strong>Status:</strong> Arrived at ${formatDateTime(call.pickup_time)}</div>`;
+                    } else {
+                        arrivalText = `<div><strong>Estimated arrival:</strong> ${etaText}</div>`;
+                    }
+                    
+                    trackingContent.innerHTML = `
+                        <div><strong>Ambulance:</strong> ${assignedAmbulance.ambulance_id}</div>
+                        <div><strong>Driver:</strong> ${assignedAmbulance.driver_name}</div>
+                        <div><strong>Contact:</strong> ${assignedAmbulance.driver_phone}</div>
+                        <div><strong>Current location:</strong> ${assignedAmbulance.latitude.toFixed(6)}, ${assignedAmbulance.longitude.toFixed(6)}</div>
+                        ${arrivalText}
+                    `;
+                    
+                    // Draw path from ambulance to victim
+                    if (call.latitude && call.longitude && assignedAmbulance.latitude && assignedAmbulance.longitude) {
+                        drawAmbulancePath(call.id, 
+                            call.latitude, call.longitude,
+                            assignedAmbulance.latitude, assignedAmbulance.longitude
+                        );
+                    }
+                } else {
+                    trackingContent.innerHTML = `
+                        <div>Loading ambulance tracking information...</div>
+                    `;
+                }
+            } else {
+                trackingInfo.style.display = 'none';
+                
+                // Remove any existing paths
+                if (ambulancePaths[call.id]) {
+                    map.removeLayer(ambulancePaths[call.id]);
+                    delete ambulancePaths[call.id];
+                }
+            }
+        }
+        
+        // Draw path from ambulance to victim
+        function drawAmbulancePath(callId, victimLat, victimLng, ambulanceLat, ambulanceLng) {
+            // Remove existing path
+            if (ambulancePaths[callId]) {
+                map.removeLayer(ambulancePaths[callId]);
+            }
+            
+            // Create a polyline between ambulance and victim
+            ambulancePaths[callId] = L.polyline(
+                [[ambulanceLat, ambulanceLng], [victimLat, victimLng]],
+                { className: 'emergency-path' }
+            ).addTo(map);
+        }
+        
+        // Calculate distance between two coordinates (haversine formula)
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; // Distance in km
+        }
+        
+        // Copy to clipboard function
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text)
+                .then(() => {
+                    alert("Location share link copied to clipboard!");
+                })
+                .catch(err => {
+                    console.error('Could not copy text: ', err);
+                    // Fallback for older browsers
+                    const textArea = document.createElement("textarea");
+                    textArea.value = text;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(textArea);
+                    alert("Location share link copied to clipboard!");
+                });
+        }
+        
+        // Add or update marker on the map
+        function addOrUpdateMarker(call) {
+            if (!map) return;
+            
+            // Remove existing marker if any
+            if (markers[call.id]) {
+                map.removeLayer(markers[call.id]);
+            }
+            
+            // Create icon based on call status
+            const icon = L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div style="background-color: red; width: 15px; height: 15px; border-radius: 50%;"></div>`,
+                iconSize: [15, 15],
+                iconAnchor: [7, 7]
+            });
+            
+            // Add new marker
+            markers[call.id] = L.marker([call.latitude, call.longitude], { icon: icon })
+                .addTo(map)
+                .bindPopup(`
+                    <b>Emergency Call #${call.id}</b><br>
+                    Status: ${formatStatus(call.status)}<br>
+                    Phone: ${call.caller_phone}<br>
+                    ${call.address ? `Address: ${call.address}` : ''}
+                `);
+        }
+        
+        // Add or update ambulance marker on the map
+        function addOrUpdateAmbulanceMarker(ambulance) {
+            if (!map) return;
+            
+            // Remove existing marker if any
+            if (ambulanceMarkers[ambulance.id]) {
+                map.removeLayer(ambulanceMarkers[ambulance.id]);
+            }
+            
+            // Determine marker color based on status
+            let markerColor = "green"; // Available
+            
+            if (!ambulance.is_available) {
+                // Check if it has arrived at location
+                const assignedCall = findCallAssignedToAmbulance(ambulance.id);
+                if (assignedCall && assignedCall.pickup_time) {
+                    markerColor = "purple"; // Arrived
+                } else {
+                    markerColor = "orange"; // En route
+                }
+            }
+            
+            // Create ambulance icon
+            const icon = L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div style="background-color: ${markerColor}; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 10px;">A</div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+            
+            // Add new marker
+            const marker = L.marker([ambulance.latitude, ambulance.longitude], { icon: icon })
+                .addTo(map)
+                .bindPopup(`
+                    <b>Ambulance ${ambulance.ambulance_id}</b><br>
+                    Driver: ${ambulance.driver_name}<br>
+                    Phone: ${ambulance.driver_phone}<br>
+                    Status: ${ambulance.is_available ? 'Available' : 'On Duty'}
+                `);
+                
+            // Store ambulance data for reference
+            marker._ambulanceData = ambulance;
+            ambulanceMarkers[ambulance.id] = marker;
+            
+            // Update path if this ambulance is assigned to the current emergency
+            if (activeCall && 
+                activeCall.assigned_ambulance_id === ambulance.id && 
+                activeCall.latitude && activeCall.longitude) {
+                drawAmbulancePath(
+                    activeCall.id,
+                    activeCall.latitude, activeCall.longitude,
+                    ambulance.latitude, ambulance.longitude
+                );
+            }
+        }
+        
+        // Find call assigned to ambulance
+        function findCallAssignedToAmbulance(ambulanceId) {
+            // This is just for UI enhancement - a more complete solution would
+            // have an API endpoint for this, but for now we'll just check the active call
+            if (activeCall && activeCall.assigned_ambulance_id === ambulanceId) {
+                return activeCall;
+            }
+            return null;
+        }
+        
+        // Format date and time
+        function formatDateTime(dateTimeStr) {
+            if (!dateTimeStr) return 'N/A';
+            const dateTime = new Date(dateTimeStr);
+            return dateTime.toLocaleString();
+        }
+        
+        // Format call status
+        function formatStatus(status) {
+            switch(status) {
+                case 'initiated': return 'Initiated';
+                case 'location_shared': return 'Location Shared';
+                case 'assigned': return 'Ambulance Assigned';
+                case 'arrived': return 'Ambulance Arrived';
+                case 'completed': return 'Completed';
+                default: return status.charAt(0).toUpperCase() + status.slice(1);
+            }
+        }
+        
+        // Initiate a new emergency call
+        function initiateCall() {
+            const phone = callerPhone.value.trim();
+            const connectivity = connectivityStatus.value;
+            
+            if (!phone) {
+                alert('Please enter a valid phone number');
+                return;
+            }
+            
+            fetch('/api/callcenter/initiate-call', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    caller_phone: phone,
+                    connectivity_status: connectivity
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    let message = `Emergency call initiated! `;
+                    
+                    if (data.sms_protocol_initiated) {
+                        message += `SMS location protocol initiated for ${phone}.`;
+                    } else if (data.sms_sent) {
+                        message += `Location sharing link sent to ${phone}.`;
+                    } else {
+                        message += `Could not send SMS. Check the console log for the location sharing link.`;
+                    }
+                    
+                    alert(message);
+                    console.log('Location Sharing URL:', data.location_share_url);
+                    
+                    callerPhone.value = '';
+                    loadActiveCalls();
+                    loadCallDetails(data.emergency_call_id);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Error connecting to server. Please try again.');
+            });
+        }
+        
+        // Initiate SMS location protocol
+        function initiateSmsProtocol(resend = false) {
+            if (!currentCallId) return;
+            
+            const url = `/api/callcenter/initiate-sms-protocol/${currentCallId}`;
+            const queryParams = resend ? '?resend=true' : '';
+            
+            fetch(url + queryParams, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const action = resend ? 'resent' : 'initiated';
+                    alert(`SMS location protocol ${action} successfully!`);
+                    
+                    // Refresh call details to show updated SMS protocol info
+                    loadCallDetails(currentCallId);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Error connecting to server. Please try again.');
+            });
+        }
+        
+        // Copy location sharing link to clipboard
+        function copyLocationLink() {
+            if (!activeCall || !activeCall.location_link_id) return;
+            
+            const baseUrl = window.location.origin;
+            const locationUrl = `${baseUrl}/share-location/${activeCall.location_link_id}`;
+            
+            copyToClipboard(locationUrl);
+        }
+        
+        // Assign nearest ambulance
+        function assignNearestAmbulance() {
+            if (!currentCallId) return;
+            
+            fetch(`/api/callcenter/assign-ambulance/${currentCallId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Ambulance assigned successfully!\nAmbulance: ${data.ambulance_id}\nDriver: ${data.driver_name}\nETA: ${data.eta_minutes} minutes`);
+                    loadActiveCalls();
+                    loadCallDetails(currentCallId);
+                    loadAmbulances();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Error connecting to server. Please try again.');
+            });
+        }
+        
+        // Complete emergency call
+        function completeEmergencyCall() {
+            if (!currentCallId) return;
+            
+            if (!confirm('Are you sure you want to mark this emergency call as completed?')) {
+                return;
+            }
+            
+            fetch(`/api/callcenter/complete-emergency/${currentCallId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Emergency call marked as completed.');
+                    loadActiveCalls();
+                    loadCallDetails(currentCallId);
+                    loadAmbulances();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Error connecting to server. Please try again.');
+            });
+        }
+        
+        // Connect to Socket.IO for real-time updates
+        let socket = null;
+        try {
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('Connected to server');
+            });
+            
+            socket.on('location_update', data => {
+                console.log('Location update received:', data);
+                loadActiveCalls();
+                
+                if (currentCallId === data.emergency_call_id) {
+                    loadCallDetails(currentCallId);
+                }
+            });
+            
+            socket.on('assignment_update', data => {
+                console.log('Assignment update received:', data);
+                loadActiveCalls();
+                loadAmbulances();
+                
+                if (currentCallId === data.emergency_call_id) {
+                    loadCallDetails(currentCallId);
+                }
+            });
+            
+            socket.on('ambulance_update', data => {
+                console.log('Ambulance location update received:', data);
+                loadAmbulances();
+                
+                // Update tracking info if this is the ambulance assigned to our call
+                if (activeCall && activeCall.assigned_ambulance && 
+                    activeCall.assigned_ambulance.ambulance_id === data.ambulance_id) {
+                    updateTrackingInfo(activeCall);
+                }
+            });
+        } catch (e) {
+            console.log('Socket.IO not available:', e);
+        }
+        
+        // Event listeners
+        initiateCallBtn.addEventListener('click', initiateCall);
+        shareLocationLinkBtn.addEventListener('click', copyLocationLink);
+        assignAmbulanceBtn.addEventListener('click', assignNearestAmbulance);
+        completeCallBtn.addEventListener('click', completeEmergencyCall);
+        initiateSmsProtocolBtn.addEventListener('click', () => initiateSmsProtocol(false));
+        resendSmsCodeBtn.addEventListener('click', () => initiateSmsProtocol(true));
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            loadActiveCalls();
+            loadAmbulances();
+            
+            // Periodically refresh data
+            setInterval(() => {
+                loadActiveCalls();
+                loadAmbulances();
+            }, 30000); // Refresh every 30 seconds
+        });
+    </script>
+</body>
+</html>
